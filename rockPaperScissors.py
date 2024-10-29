@@ -15,7 +15,7 @@ class RockPaperScissors(Pillar):
         self.values = [None, None]
 
     def calculate(self):
-        if self.values[0] != (self.values[1] + 1) % 3:
+        if (self.values[0] - 1) != (self.values[1] % 3):
             raise FailStateException("RockPaperScissors loss")
 
         self.values = [None, None]
@@ -27,18 +27,20 @@ class RockPaperScissors(Pillar):
     def receive(self, symbols):
         input = super().receive(symbols)
         if input < 1 or input > 3:
-            raise FailStateException("RockPaperScissors invalid received: " + str(input))
+            raise FailStateException(
+                "RockPaperScissors invalid received: " + str(input)
+            )
         self.values[1] = input
 
         if None not in self.values:
             self.calculate()
 
     def input(self, symbols):
-        if symbols[0] < 1 or symbols[0] > 3:
-            raise FailStateException("RockPaperScissors invalid input: " + str(symbols[0]))
-        self.values[0] = symbols[0]
+        if symbols < 1 or symbols > 3:
+            raise FailStateException("RockPaperScissors invalid input: " + str(symbols))
+        self.values[0] = symbols
 
         if None not in self.values:
             self.calculate()
 
-        return symbols[0]
+        return symbols

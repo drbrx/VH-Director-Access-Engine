@@ -35,12 +35,15 @@ class Calculator(Pillar):
         for i in range(4):
             if (
                 self.levels[self.score].operation(
-                    self.levels[self.score].initialValue, self.values[0][i]
+                    self.levels[self.score].initialValue[i], self.values[0][i]
                 )
                 != self.values[1][i]
             ):
                 raise FailStateException(
-                    "Calculator mismatch on bit " + str(i) + " of level " + str(self.score)
+                    "Calculator mismatch on bit "
+                    + str(i)
+                    + " of level "
+                    + str(self.score)
                 )
         self.values = [[], []]
         self.score += 1

@@ -49,17 +49,27 @@ class TicTacToe(Pillar):
     def receive(self, symbols):
         input = super().receive(symbols)
         i = (input[0] * 2) + (input[1] * 1)
-        j = (input[0] * 2) + (input[1] * 1)
+        j = (input[2] * 2) + (input[3] * 1)
         if i > 2 or j > 2:
             raise FailStateException("Invalid TicTacToe coords received: " + str(input))
+        if self.grid[j][i] != None:
+            raise FailStateException(
+                "Invalid TicTacToe coords received, attempted overwrite operation: "
+                + str(input)
+            )
         self.grid[j][i] = 0
         self.calculate()
 
     def input(self, symbols):
         i = (symbols[0] * 2) + (symbols[1] * 1)
-        j = (symbols[0] * 2) + (symbols[1] * 1)
+        j = (symbols[2] * 2) + (symbols[3] * 1)
         if i > 2 or j > 2:
             raise FailStateException("Invalid TicTacToe coords input: " + str(symbols))
+        if self.grid[j][i] != None:
+            raise FailStateException(
+                "Invalid TicTacToe coords inputed, attempted overwrite operation: "
+                + str(input)
+            )
         self.grid[j][i] = 1
         self.calculate()
         return symbols
