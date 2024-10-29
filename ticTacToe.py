@@ -4,7 +4,7 @@ from exceptions import FailStateException
 
 class TicTacToe(Pillar):
     def __init__(self):
-        self.canReceive = True
+        self.canReceive = False
         self.canInput = True
         self.targetScore = 1
         self.score = 0
@@ -59,6 +59,8 @@ class TicTacToe(Pillar):
             )
         self.grid[j][i] = 0
         self.calculate()
+        self.canReceive = False
+        self.canInput = True
 
     def input(self, symbols):
         i = (symbols[0] * 2) + (symbols[1] * 1)
@@ -72,4 +74,6 @@ class TicTacToe(Pillar):
             )
         self.grid[j][i] = 1
         self.calculate()
+        self.canReceive = False
+        self.canInput = True
         return symbols
