@@ -1,0 +1,2 @@
+class FailStateException(Exception):
+    pass
