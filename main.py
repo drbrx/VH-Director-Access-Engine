@@ -1,4 +1,7 @@
 import random
+import exrex
+from hypothesis import strategies as st
+import re
 from calculator import Calculator
 from maze import Maze
 from rockPaperScissors import RockPaperScissors
@@ -81,6 +84,28 @@ for step in s.split("/"):
         else:
             pillars[step[:2]].input(int(step.split("-")[1]))
 
-for pillar in pillars:
+""" for pillar in pillars:
     if pillars[pillar].score == pillars[pillar].targetScore:
-        print(pillar + " complete")
+        print(pillar + " complete") """
+
+p='(?=(?:(.{0,200}?R2(L1|L2|R1).{0,200}?(L1|L2|R1)R2.{0,200}?)){3})'
+p+='(?=(?:(.{0,200}?(L1|R2|R1)L2.{0,200}?L2(L1|R2|R1).{0,200}?){3}?(L1|R2|R1)L2.{0,200}?))'
+p+='(?=(?:(.{0,200}?L1(L2|R1|R2).{0,200}?(L2|R1|R2)L1.{0,200}?)|(.{0,200}?(L2|R1|R2)L1.{0,200}?L1(L2|R1|R2).{0,200}?)){3})'
+p+='(?=(?:(.{0,200}?L1(L2|R1|R2).{0,200}?(L2|R1|R2)L1.{0,200}?)|(.{0,200}?(L2|R1|R2)L1.{0,200}?L1(L2|R1|R2).{0,200}?)){3})'
+p+='^(((L1|L2|R1|R2)(?!\\22)(L1\\-[1-3]|L2\\+[01]{4}|R1\\+(0|1){4}|R2\\+[0-4]{3,15})($|\\/(?!$))){11,13}(L1\\-[1-3]|L2\\+[01]{4}|R1\\+(0|1){4}|R2\\+[0-4]{3,15})?){1,1}$'
+print(p + "\n\n")
+
+regex_strategy = st.from_regex(p, fullmatch=True)
+#o=regex_strategy.example()
+#print(o)
+pattern = re.compile(p)
+m=pattern.match(s)
+print(bool(m))
+
+#print(exrex.count(p))
+#o=exrex.getone(p)
+#pattern = re.compile(p)
+#m=pattern.match(o)
+#print(m.groups())
+#print(m)
+#print(re.search(p,s))
