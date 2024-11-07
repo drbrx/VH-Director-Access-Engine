@@ -106,9 +106,7 @@ for i in range(12):
     )
 
 solver.add(constraints)
-
-print("\n\n".join(map(str, [solver.check(), solver.model()])))
-part = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0"
+#print("\n\n".join(map(str, [solver.check(), solver.model()])))
 
 for attempts in range(1000):
     if solver.check() == sat:
