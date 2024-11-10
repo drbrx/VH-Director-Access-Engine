@@ -42,7 +42,9 @@ def simulate(s):
         "R2": Maze(),
     }
 
+    step_idx = -1
     try:
+        step_idx += 1
         for step in s.split("/"):
             if "+" in step:
                 if step.split("+")[0].__len__() == 4:
@@ -59,14 +61,14 @@ def simulate(s):
                 else:
                     pillars[step[:2]].input(int(step.split("-")[1]))
     except:
-        return False
+        return step_idx
 
     for pillar in pillars:
         if pillars[pillar].score != pillars[pillar].targetScore:
             print(pillar + " incomplete")
             return False
 
-    return True
+    return -1
 
 
 path = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0111"
@@ -95,21 +97,48 @@ for i in range(12):
 
     # Define suffixes for each element pair
     # True for "-", False for "+"
-    variables[f"suffix_value_{i}"] = Int(f"suffix_value_{i}")
+    variables[f"suffix_value_{i}"] = Array(f"suffix_value_{i}", IntSort(), IntSort())
 
     # Constraints for suffix types
     constraints.append(
         If(
             variables[f"e2_{i}"] == element_map["L1"],
             And(
-                variables[f"suffix_value_{i}"] >= 1, variables[f"suffix_value_{i}"] <= 3
+                [
+                    And(
+                        Select(variables[f"suffix_value_{i}"], j) >= 1,
+                        Select(variables[f"suffix_value_{i}"], j) <= 3,
+                        Select(variables[f"suffix_value_{i}"], 1) == -1,
+                    )
+                    for j in range(1)
+                ]
             ),
             If(
                 variables[f"e2_{i}"] == element_map["R2"],
-                True,
                 And(
-                    variables[f"suffix_value_{i}"] >= 0,
-                    variables[f"suffix_value_{i}"] <= 15,
+                    [
+                        And(
+                            Select(variables[f"suffix_value_{i}"], j) >= 1,
+                            Select(variables[f"suffix_value_{i}"], j) <= 4,
+                            Or(
+                                [
+                                    Select(variables[f"suffix_value_{i}"], k) == -1
+                                    for k in range(4, 15)
+                                ]
+                            ),
+                        )
+                        for j in range(4)
+                    ]
+                ),
+                And(
+                    [
+                        And(
+                            Select(variables[f"suffix_value_{i}"], j) >= 0,
+                            Select(variables[f"suffix_value_{i}"], j) <= 1,
+                            Select(variables[f"suffix_value_{i}"], 4) == -1,
+                        )
+                        for j in range(4)
+                    ]
                 ),
             ),
         )
@@ -119,19 +148,48 @@ variables[f"e1_{12}"] = Int(f"e1_{12}")
 constraints.append(
     Or([variables[f"e1_{12}"] == element_map[elem] for elem in elements])
 )
-variables[f"suffix_value_{12}"] = Int(f"suffix_value_{12}")
+variables[f"suffix_value_{12}"] = Array(f"suffix_value_{12}", IntSort(), IntSort())
 
 # Constraints for suffix types
 constraints.append(
     If(
-        variables[f"e2_{12}"] == element_map["L1"],
-        And(variables[f"suffix_value_{12}"] >= 1, variables[f"suffix_value_{12}"] <= 3),
+        variables[f"e1_{12}"] == element_map["L1"],
+        And(
+            [
+                And(
+                    Select(variables[f"suffix_value_{12}"], j) >= 1,
+                    Select(variables[f"suffix_value_{12}"], j) <= 3,
+                    Select(variables[f"suffix_value_{12}"], 1) == -1,
+                )
+                for j in range(1)
+            ]
+        ),
         If(
             variables[f"e1_{12}"] == element_map["R2"],
-            True,  # TODO how do i deal with binary with zero in front?
             And(
-                variables[f"suffix_value_{12}"] >= 0,
-                variables[f"suffix_value_{12}"] <= 15,
+                [
+                    And(
+                        Select(variables[f"suffix_value_{12}"], j) >= 1,
+                        Select(variables[f"suffix_value_{12}"], j) <= 4,
+                        Or(
+                            [
+                                Select(variables[f"suffix_value_{12}"], k) == -1
+                                for k in range(4, 15)
+                            ]
+                        ),
+                    )
+                    for j in range(4)
+                ]
+            ),
+            And(
+                [
+                    And(
+                        Select(variables[f"suffix_value_{12}"], j) >= 0,
+                        Select(variables[f"suffix_value_{12}"], j) <= 1,
+                        Select(variables[f"suffix_value_{12}"], 4) == -1,
+                    )
+                    for j in range(4)
+                ]
             ),
         ),
     )
@@ -211,7 +269,8 @@ solver.add(
 solver.add(constraints)
 # print("\n\n".join(map(str, [solver.check(), solver.model()])))
 
-for attempts in range(1000):
+MAX_TRIES = 1000
+for attempts in range(MAX_TRIES):
     if solver.check() == sat:
         model = solver.model()
         solution_string = ""
@@ -229,25 +288,37 @@ for attempts in range(1000):
                     == element_map["L1"]
                     else "+"
                 )
-                + str(model.eval(variables[f"suffix_value_{i}"]).as_long())
-                + ("/" if i < 12 else "")
             )
 
-        print("Generated solution:", solution_string)
+            j = 0
+            while True:
+                value = model.eval(Select(variables[f"suffix_value_{i}"], j)).as_long()
+                if value == -1:
+                    break
+                solution_string += str(value)
+                j += 1
 
-        if simulate(solution_string):  # Assuming simulate() is defined elsewhere
+            solution_string += "/" if i < 12 else ""
+
+        print("Generated solution:", solution_string)
+        sim_result = simulate(solution_string)
+        if sim_result == -1:  # Assuming simulate() is defined elsewhere
             print("Valid solution found:", solution_string)
             break
         else:
-            print("Invalid solution, adding constraint to avoid it")
-            solver.add(
-                Or(
-                    [
-                        variables[f"e1_{i}"] != model.eval(variables[f"e1_{i}"])
-                        for i in range(12)
-                    ]
-                )
+            print(
+                f"Invalid solution at attampt {attempts}/{MAX_TRIES}, adding constraint(s) to avoid it"
             )
+            for step in range(sim_result):
+                solver.add(
+                    Or(
+                        variables[f"e1_{step}"] != model.eval(variables[f"e1_{step}"]),
+                        variables[f"e{1 if step == 12 else 2}_{step}"]
+                        != model.eval(variables[f"e{1 if step == 12 else 2}_{step}"]),
+                        variables[f"suffix_value_{step}"]
+                        != model.eval(variables[f"suffix_value_{step}"]),
+                    )
+                )
     else:
         print("No further solutions exist that satisfy the constraints.")
         break
