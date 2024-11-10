@@ -80,53 +80,174 @@ solver = Solver()
 variables = {}
 constraints = []
 
+# base formula gen
 for i in range(12):
     # Define two distinct elements for each pair
-    e1 = Int(f"e1_{i}")
-    variables[f"e1_{i}"] = e1
-    e2 = Int(f"e2_{i}")
-    variables[f"e2_{i}"] = e2
-    constraints.append(e1 != e2)
-    constraints.append(Or([e1 == element_map[elem] for elem in elements]))
-    constraints.append(Or([e2 == element_map[elem] for elem in elements]))
+    variables[f"e1_{i}"] = Int(f"e1_{i}")
+    variables[f"e2_{i}"] = Int(f"e2_{i}")
+    constraints.append(variables[f"e1_{i}"] != variables[f"e2_{i}"])
+    constraints.append(
+        Or([variables[f"e1_{i}"] == element_map[elem] for elem in elements])
+    )
+    constraints.append(
+        Or([variables[f"e2_{i}"] == element_map[elem] for elem in elements])
+    )
 
     # Define suffixes for each element pair
-    suffix_type = Bool(f"suffix_type_{i}")  # True for "-", False for "+"
-    variables[f"suffix_type_{i}"] = suffix_type
-    suffix_value = Int(f"suffix_value_{i}")
-    variables[f"suffix_value_{i}"] = suffix_value
+    # True for "-", False for "+"
+    variables[f"suffix_value_{i}"] = Int(f"suffix_value_{i}")
 
     # Constraints for suffix types
     constraints.append(
         If(
-            suffix_type,
-            And(suffix_value >= 1, suffix_value <= 3),
-            And(suffix_value >= 0, suffix_value <= 15),
+            variables[f"e2_{i}"] == element_map["L1"],
+            And(
+                variables[f"suffix_value_{i}"] >= 1, variables[f"suffix_value_{i}"] <= 3
+            ),
+            If(
+                variables[f"e2_{i}"] == element_map["R2"],
+                True,
+                And(
+                    variables[f"suffix_value_{i}"] >= 0,
+                    variables[f"suffix_value_{i}"] <= 15,
+                ),
+            ),
         )
     )
+# extra, final step gen
+variables[f"e1_{12}"] = Int(f"e1_{12}")
+constraints.append(
+    Or([variables[f"e1_{12}"] == element_map[elem] for elem in elements])
+)
+variables[f"suffix_value_{12}"] = Int(f"suffix_value_{12}")
+
+# Constraints for suffix types
+constraints.append(
+    If(
+        variables[f"e2_{12}"] == element_map["L1"],
+        And(variables[f"suffix_value_{12}"] >= 1, variables[f"suffix_value_{12}"] <= 3),
+        If(
+            variables[f"e1_{12}"] == element_map["R2"],
+            True,  # TODO how do i deal with binary with zero in front?
+            And(
+                variables[f"suffix_value_{12}"] >= 0,
+                variables[f"suffix_value_{12}"] <= 15,
+            ),
+        ),
+    )
+)
+
+# full rule gen
+solver.add(
+    Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]) == 3
+)
+solver.add(
+    Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]) == 3
+)
+solver.add(
+    Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]) == 3
+)
+solver.add(
+    Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]) == 3
+)
+solver.add(
+    Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]) == 3
+)
+solver.add(
+    Sum([If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]) == 3
+)
+
+solver.add(
+    And(
+        Sum(
+            Sum(
+                [
+                    If(
+                        Or(
+                            variables[f"e2_{i}"] == element_map["L2"],
+                            variables[f"e1_{i}"] == element_map["L2"],
+                        ),
+                        1,
+                        0,
+                    )
+                    for i in range(12)
+                ]
+            ),
+            If(
+                Or(
+                    variables[f"e1_{12}"] == element_map["L2"],
+                ),
+                1,
+                0,
+            ),
+        )
+        <= 8,
+        Sum(
+            Sum(
+                [
+                    If(
+                        Or(
+                            variables[f"e2_{i}"] == element_map["L2"],
+                            variables[f"e1_{i}"] == element_map["L2"],
+                        ),
+                        1,
+                        0,
+                    )
+                    for i in range(12)
+                ]
+            ),
+            If(
+                Or(
+                    variables[f"e1_{12}"] == element_map["L2"],
+                ),
+                1,
+                0,
+            ),
+        )
+        >= 5,
+    )
+)
 
 solver.add(constraints)
-#print("\n\n".join(map(str, [solver.check(), solver.model()])))
+# print("\n\n".join(map(str, [solver.check(), solver.model()])))
 
 for attempts in range(1000):
     if solver.check() == sat:
         model = solver.model()
         solution_string = ""
-        for i in range(12):
+        for i in range(13):
             solution_string += (
-                model.eval(variables[f"e1_{i}"])
-                + model.eval(variables[f"e2_{i}"])
-                + ("-" if model.eval(variables[f"suffix_type_{i}"]) else "+")
-                + model.eval(variables[f"suffix_value_{i}"])
-                + ("/" if i != 11 else "")
+                reverse_map[model.eval(variables[f"e1_{i}"]).as_long()]
+                + (
+                    reverse_map[model.eval(variables[f"e2_{i}"]).as_long()]
+                    if i < 12
+                    else ""
+                )
+                + (
+                    "-"
+                    if model.eval(variables[f"e{(1 if i ==12 else 2)}_{i}"])
+                    == element_map["L1"]
+                    else "+"
+                )
+                + str(model.eval(variables[f"suffix_value_{i}"]).as_long())
+                + ("/" if i < 12 else "")
             )
-        print(solution_string)
-        if simulate(solution_string):
-            print("Valid solution found:", solution_string, " -> ", solver.model())
+
+        print("Generated solution:", solution_string)
+
+        if simulate(solution_string):  # Assuming simulate() is defined elsewhere
+            print("Valid solution found:", solution_string)
             break
         else:
-            print("Failed:", solution_string, " -> ", solver.model())
-            solver.add(Or([var != model.evaluate(var) for var in [x, y, z]]))
+            print("Invalid solution, adding constraint to avoid it")
+            solver.add(
+                Or(
+                    [
+                        variables[f"e1_{i}"] != model.eval(variables[f"e1_{i}"])
+                        for i in range(12)
+                    ]
+                )
+            )
     else:
         print("No further solutions exist that satisfy the constraints.")
         break
