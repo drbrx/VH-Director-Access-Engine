@@ -5,6 +5,9 @@ from rockPaperScissors import RockPaperScissors
 from ticTacToe import TicTacToe
 from z3 import *
 
+z3.set_option(
+    max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000
+)
 
 """ pillars = {
     "L1": RockPaperScissors(),
@@ -83,51 +86,51 @@ variables = {}
 constraints = []
 
 # base formula gen
-for i in range(12):
+for i in range(13):
     # Define two distinct elements for each pair
+    param = 2
     variables[f"e1_{i}"] = Int(f"e1_{i}")
-    variables[f"e2_{i}"] = Int(f"e2_{i}")
-    constraints.append(variables[f"e1_{i}"] != variables[f"e2_{i}"])
     constraints.append(
         Or([variables[f"e1_{i}"] == element_map[elem] for elem in elements])
     )
-    constraints.append(
-        Or([variables[f"e2_{i}"] == element_map[elem] for elem in elements])
-    )
+    if i == 12:
+        param = 1
+    else:
+        variables[f"e2_{i}"] = Int(f"e2_{i}")
+        constraints.append(variables[f"e1_{i}"] != variables[f"e2_{i}"])
+        constraints.append(
+            Or([variables[f"e2_{i}"] == element_map[elem] for elem in elements])
+        )
 
     # Define suffixes for each element pair
-    # True for "-", False for "+"
     variables[f"suffix_value_{i}"] = Array(f"suffix_value_{i}", IntSort(), IntSort())
-
+"""
     # Constraints for suffix types
     constraints.append(
         If(
-            variables[f"e2_{i}"] == element_map["L1"],
+            variables[f"e{param}_{i}"] == element_map["L1"],
             And(
-                [
-                    And(
-                        Select(variables[f"suffix_value_{i}"], j) >= 1,
-                        Select(variables[f"suffix_value_{i}"], j) <= 3,
-                        Select(variables[f"suffix_value_{i}"], 1) == -1,
-                    )
-                    for j in range(1)
-                ]
+                Select(variables[f"suffix_value_{i}"], 0) >= 1,
+                Select(variables[f"suffix_value_{i}"], 0) <= 3,
+                Select(variables[f"suffix_value_{i}"], 1) == -1,
             ),
             If(
-                variables[f"e2_{i}"] == element_map["R2"],
+                variables[f"e{param}_{i}"] == element_map["R2"],
                 And(
                     [
                         And(
-                            Select(variables[f"suffix_value_{i}"], j) >= 1,
-                            Select(variables[f"suffix_value_{i}"], j) <= 4,
-                            Or(
+                            Select(variables[f"suffix_value_{i}"], k) == -1,
+                            And(
                                 [
-                                    Select(variables[f"suffix_value_{i}"], k) == -1
-                                    for k in range(4, 15)
+                                    And(
+                                        Select(variables[f"suffix_value_{i}"], h) >= 1,
+                                        Select(variables[f"suffix_value_{i}"], h) <= 4,
+                                    )
+                                    for h in range(k)
                                 ]
                             ),
                         )
-                        for j in range(4)
+                        for k in range(4, 15)
                     ]
                 ),
                 And(
@@ -141,164 +144,158 @@ for i in range(12):
                     ]
                 ),
             ),
-        )
+        ),
     )
-# extra, final step gen
-variables[f"e1_{12}"] = Int(f"e1_{12}")
-constraints.append(
-    Or([variables[f"e1_{12}"] == element_map[elem] for elem in elements])
+"""
+# full rule gen
+L1Counter_1 = Int("L1Counter_1")
+L1Counter_2 = Int("L1Counter_2")
+solver.add(
+    L1Counter_1
+    == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),    
+    L1Counter_1 >= 2,
+    L1Counter_1 <= 4,
+    L1Counter_2
+    == Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]),
+    L1Counter_2 >= 2,
+    L1Counter_2 <= 4,
+    L1Counter_1 + L1Counter_2 == 6,
 )
-variables[f"suffix_value_{12}"] = Array(f"suffix_value_{12}", IntSort(), IntSort())
 
-# Constraints for suffix types
-constraints.append(
-    If(
-        variables[f"e1_{12}"] == element_map["L1"],
-        And(
+R1Counter_1 = Int("R1Counter_1")
+R1Counter_2 = Int("R1Counter_2")
+solver.add(
+    R1Counter_1
+    == Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]),    
+    R1Counter_1 >= 2,
+    R1Counter_1 <= 4,
+    R1Counter_1
+    == Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]),
+    R1Counter_2 >= 2,
+    R1Counter_2 <= 4,
+    R1Counter_1 + R1Counter_2 == 6,
+)
+
+R2Counter_1 = Int("R2Counter_1")
+R2Counter_2 = Int("R2Counter_2")
+solver.add(
+    R2Counter_1
+    == Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]),    
+    R2Counter_1 >= 2,
+    R2Counter_1 <= 4,
+    R2Counter_2
+    == Sum([If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]),
+    R2Counter_2 >= 2,
+    R2Counter_2 <= 4,
+    R2Counter_1 + R2Counter_2 == 6,
+)
+
+
+L2Counter = Int("L2Counter")
+solver.add(
+    L2Counter
+    == Sum(
+        Sum(
             [
-                And(
-                    Select(variables[f"suffix_value_{12}"], j) >= 1,
-                    Select(variables[f"suffix_value_{12}"], j) <= 3,
-                    Select(variables[f"suffix_value_{12}"], 1) == -1,
+                If(
+                    Or(
+                        variables[f"e2_{i}"] == element_map["L2"],
+                        variables[f"e1_{i}"] == element_map["L2"],
+                    ),
+                    1,
+                    0,
                 )
-                for j in range(1)
+                for i in range(12)
             ]
         ),
         If(
-            variables[f"e1_{12}"] == element_map["R2"],
-            And(
-                [
-                    And(
-                        Select(variables[f"suffix_value_{12}"], j) >= 1,
-                        Select(variables[f"suffix_value_{12}"], j) <= 4,
-                        Or(
-                            [
-                                Select(variables[f"suffix_value_{12}"], k) == -1
-                                for k in range(4, 15)
-                            ]
-                        ),
-                    )
-                    for j in range(4)
-                ]
+            Or(
+                variables[f"e1_{12}"] == element_map["L2"],
             ),
-            And(
-                [
-                    And(
-                        Select(variables[f"suffix_value_{12}"], j) >= 0,
-                        Select(variables[f"suffix_value_{12}"], j) <= 1,
-                        Select(variables[f"suffix_value_{12}"], 4) == -1,
-                    )
-                    for j in range(4)
-                ]
-            ),
+            1,
+            0,
         ),
     )
 )
-
-# full rule gen
-solver.add(
-    Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]) == 3
-)
-solver.add(
-    Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]) == 3
-)
-solver.add(
-    Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]) == 3
-)
-solver.add(
-    Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]) == 3
-)
-solver.add(
-    Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]) == 3
-)
-solver.add(
-    Sum([If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]) == 3
-)
-
-solver.add(
-    And(
-        Sum(
-            Sum(
-                [
-                    If(
-                        Or(
-                            variables[f"e2_{i}"] == element_map["L2"],
-                            variables[f"e1_{i}"] == element_map["L2"],
-                        ),
-                        1,
-                        0,
-                    )
-                    for i in range(12)
-                ]
-            ),
-            If(
-                Or(
-                    variables[f"e1_{12}"] == element_map["L2"],
-                ),
-                1,
-                0,
-            ),
-        )
-        <= 8,
-        Sum(
-            Sum(
-                [
-                    If(
-                        Or(
-                            variables[f"e2_{i}"] == element_map["L2"],
-                            variables[f"e1_{i}"] == element_map["L2"],
-                        ),
-                        1,
-                        0,
-                    )
-                    for i in range(12)
-                ]
-            ),
-            If(
-                Or(
-                    variables[f"e1_{12}"] == element_map["L2"],
-                ),
-                1,
-                0,
-            ),
-        )
-        >= 5,
-    )
-)
+solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
 
 solver.add(constraints)
 # print("\n\n".join(map(str, [solver.check(), solver.model()])))
 
-MAX_TRIES = 1000
+
+def encode(model):
+    solution_string = ""
+    for i in range(13):
+        solution_string += (
+            reverse_map[model.eval(variables[f"e1_{i}"]).as_long()]
+            + (
+                reverse_map[model.eval(variables[f"e2_{i}"]).as_long()]
+                if i < 12
+                else ""
+            )
+            + (
+                "-"
+                if model.eval(variables[f"e{(1 if i ==12 else 2)}_{i}"])
+                == element_map["L1"]
+                else "+"
+            )
+        )
+
+        j = 0
+        while True:
+            value = model.eval(Select(variables[f"suffix_value_{i}"], j)).as_long()
+            if value == -1:
+                break
+            solution_string += str(value)
+            j += 1
+
+        solution_string += "/" if i < 12 else ""
+    return solution_string
+
+
+def decode(solution_string, solver):
+    i = 0
+    for step in solution_string.split("/"):
+        solver.add(variables[f"e1_{i}"] == element_map[step[0:2]])
+        if i < 12:
+            solver.add(variables[f"e2_{i}"] == element_map[step[2:4]])
+            val_start = 5
+        else:
+            val_start = 3
+        j = 0
+        for digit in step[val_start:]:
+            solver.add(Select(variables[f"suffix_value_{i}"], j) == int(digit))
+            j += 1
+        solver.add(Select(variables[f"suffix_value_{i}"], j) == -1)
+        i += 1
+
+    return variables
+
+
+solver.push()
+decode(path, solver)
+print(solver.assertions())
+if solver.check() == sat:
+    model = solver.model()
+
+    solution_string = encode(model)
+
+    print("Generated solution:", solution_string)
+    sim_result = simulate(solution_string)
+    if sim_result == -1:  # Assuming simulate() is defined elsewhere
+        print("Valid solution found:", solution_string)
+    else:
+        print(f"Invalid solution at coherence check")
+else:
+    print(f"Invalid solution at coherence check")
+solver.pop()
+
+MAX_TRIES = 0
 for attempts in range(MAX_TRIES):
     if solver.check() == sat:
         model = solver.model()
-        solution_string = ""
-        for i in range(13):
-            solution_string += (
-                reverse_map[model.eval(variables[f"e1_{i}"]).as_long()]
-                + (
-                    reverse_map[model.eval(variables[f"e2_{i}"]).as_long()]
-                    if i < 12
-                    else ""
-                )
-                + (
-                    "-"
-                    if model.eval(variables[f"e{(1 if i ==12 else 2)}_{i}"])
-                    == element_map["L1"]
-                    else "+"
-                )
-            )
 
-            j = 0
-            while True:
-                value = model.eval(Select(variables[f"suffix_value_{i}"], j)).as_long()
-                if value == -1:
-                    break
-                solution_string += str(value)
-                j += 1
-
-            solution_string += "/" if i < 12 else ""
+        solution_string = encode(model)
 
         print("Generated solution:", solution_string)
         sim_result = simulate(solution_string)
@@ -307,7 +304,7 @@ for attempts in range(MAX_TRIES):
             break
         else:
             print(
-                f"Invalid solution at attampt {attempts}/{MAX_TRIES}, adding constraint(s) to avoid it"
+                f"Invalid solution at attampt {attempts+1}/{MAX_TRIES}, adding constraint(s) to avoid it"
             )
             for step in range(sim_result):
                 solver.add(
