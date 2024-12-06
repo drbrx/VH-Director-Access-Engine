@@ -1,3 +1,4 @@
+#region imports and setup
 import random
 from calculator import Calculator
 from maze import Maze
@@ -8,19 +9,32 @@ from z3 import *
 z3.set_option(
     max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000
 )
+MAX_TRIES = 10
 
+path = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0111"
+# print(simulate(path))
+
+elements = ["L1", "L2", "R1", "R2"]
+element_map = {elem: i for i, elem in enumerate(elements)}
+reverse_map = {i: elem for elem, i in element_map.items()}
+
+solver = Solver()
+variables = {}
+constraints = []
+#endregion
+
+#region "Manual" simulation. Only for testing functionality of the simulation
 """ pillars = {
     "L1": RockPaperScissors(),
     "L2": TicTacToe(),
     "R1": Calculator(),
     "R2": Maze(),
-} """
+} 
 
-""" activePillar = random.choice(list(filter(lambda p: p.canReceive, pillars)))
+ activePillar = random.choice(list(filter(lambda p: p.canReceive, pillars)))
 inputPillar = random.choice(
     list(filter(lambda p: p.canInput and p != activePillar, pillars))
 )
-
 
 input = []
 for i in range(inputPillar.inputLen):
@@ -35,7 +49,7 @@ print(
     + str(input)
 )
 activePillar.receive(inputPillar.input(input)) """
-
+#endregion
 
 def simulate(s):
     pillars = {
@@ -73,19 +87,7 @@ def simulate(s):
 
     return -1
 
-
-path = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0111"
-# print(simulate(path))
-
-elements = ["L1", "L2", "R1", "R2"]
-element_map = {elem: i for i, elem in enumerate(elements)}
-reverse_map = {i: elem for elem, i in element_map.items()}
-
-solver = Solver()
-variables = {}
-constraints = []
-
-# base formula gen
+#region Base formula gen
 for i in range(13):
     # Define two distinct elements for each pair
     param = 2
@@ -104,7 +106,7 @@ for i in range(13):
 
     # Define suffixes for each element pair
     variables[f"suffix_value_{i}"] = Array(f"suffix_value_{i}", IntSort(), IntSort())
-"""
+
     # Constraints for suffix types
     constraints.append(
         If(
@@ -116,7 +118,7 @@ for i in range(13):
             ),
             If(
                 variables[f"e{param}_{i}"] == element_map["R2"],
-                And(
+                Or(
                     [
                         And(
                             Select(variables[f"suffix_value_{i}"], k) == -1,
@@ -129,8 +131,72 @@ for i in range(13):
                                     for h in range(k)
                                 ]
                             ),
+                            If(
+                                i == 12,
+                                Sum(
+                                    [
+                                        Select(variables[f"suffix_value_{i}"], h)
+                                        for h in range(k)
+                                    ]
+                                )
+                                <= 15,
+                                If(
+                                    variables[f"e1_{i}"] == element_map["L1"],
+                                    Sum(
+                                        [
+                                            Select(variables[f"suffix_value_{i}"], h)
+                                            for h in range(k)
+                                        ]
+                                    )
+                                    <= 3,
+                                    If(
+                                        variables[f"e1_{i}"] == element_map["L2"],
+                                        And(
+                                            Sum(
+                                                [
+                                                    Select(
+                                                        variables[f"suffix_value_{i}"],
+                                                        h,
+                                                    )
+                                                    for h in range(k)
+                                                ]
+                                            )
+                                            != 3,
+                                            Sum(
+                                                [
+                                                    Select(
+                                                        variables[f"suffix_value_{i}"],
+                                                        h,
+                                                    )
+                                                    for h in range(k)
+                                                ]
+                                            )
+                                            != 7,
+                                            Sum(
+                                                [
+                                                    Select(
+                                                        variables[f"suffix_value_{i}"],
+                                                        h,
+                                                    )
+                                                    for h in range(k)
+                                                ]
+                                            )
+                                            < 10,
+                                        ),
+                                        Sum(
+                                            [
+                                                Select(
+                                                    variables[f"suffix_value_{i}"], h
+                                                )
+                                                for h in range(k)
+                                            ]
+                                        )
+                                        <= 15,
+                                    ),
+                                ),
+                            ),
                         )
-                        for k in range(4, 15)
+                        for k in range(3, 16)
                     ]
                 ),
                 And(
@@ -146,13 +212,14 @@ for i in range(13):
             ),
         ),
     )
-"""
-# full rule gen
+#endregion
+
+#region counter rule setup
 L1Counter_1 = Int("L1Counter_1")
 L1Counter_2 = Int("L1Counter_2")
 solver.add(
     L1Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),    
+    == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),
     L1Counter_1 >= 2,
     L1Counter_1 <= 4,
     L1Counter_2
@@ -166,10 +233,10 @@ R1Counter_1 = Int("R1Counter_1")
 R1Counter_2 = Int("R1Counter_2")
 solver.add(
     R1Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]),    
+    == Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]),
     R1Counter_1 >= 2,
     R1Counter_1 <= 4,
-    R1Counter_1
+    R1Counter_2
     == Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]),
     R1Counter_2 >= 2,
     R1Counter_2 <= 4,
@@ -180,7 +247,7 @@ R2Counter_1 = Int("R2Counter_1")
 R2Counter_2 = Int("R2Counter_2")
 solver.add(
     R2Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]),    
+    == Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]),
     R2Counter_1 >= 2,
     R2Counter_1 <= 4,
     R2Counter_2
@@ -189,7 +256,6 @@ solver.add(
     R2Counter_2 <= 4,
     R2Counter_1 + R2Counter_2 == 6,
 )
-
 
 L2Counter = Int("L2Counter")
 solver.add(
@@ -218,11 +284,11 @@ solver.add(
     )
 )
 solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
+#endregion
 
 solver.add(constraints)
-# print("\n\n".join(map(str, [solver.check(), solver.model()])))
 
-
+#region encode/decode helpers
 def encode(model):
     solution_string = ""
     for i in range(13):
@@ -271,26 +337,32 @@ def decode(solution_string, solver):
 
     return variables
 
+#endregion
 
+#region coherence check
 solver.push()
 decode(path, solver)
-print(solver.assertions())
+# print(solver.assertions())
 if solver.check() == sat:
     model = solver.model()
 
     solution_string = encode(model)
-
-    print("Generated solution:", solution_string)
     sim_result = simulate(solution_string)
     if sim_result == -1:  # Assuming simulate() is defined elsewhere
-        print("Valid solution found:", solution_string)
+        print(
+            "Coherence check passed with value:\n",
+            solution_string,
+            "\nTested value:\n",
+            path,
+        )
     else:
-        print(f"Invalid solution at coherence check")
+        print(f"Valid solution at coherence check. Simulation failed")
 else:
     print(f"Invalid solution at coherence check")
 solver.pop()
+#endregion
 
-MAX_TRIES = 0
+#region solver
 for attempts in range(MAX_TRIES):
     if solver.check() == sat:
         model = solver.model()
@@ -299,23 +371,26 @@ for attempts in range(MAX_TRIES):
 
         print("Generated solution:", solution_string)
         sim_result = simulate(solution_string)
-        if sim_result == -1:  # Assuming simulate() is defined elsewhere
+        if sim_result == -1:
             print("Valid solution found:", solution_string)
             break
         else:
             print(
                 f"Invalid solution at attampt {attempts+1}/{MAX_TRIES}, adding constraint(s) to avoid it"
             )
-            for step in range(sim_result):
-                solver.add(
-                    Or(
-                        variables[f"e1_{step}"] != model.eval(variables[f"e1_{step}"]),
-                        variables[f"e{1 if step == 12 else 2}_{step}"]
-                        != model.eval(variables[f"e{1 if step == 12 else 2}_{step}"]),
-                        variables[f"suffix_value_{step}"]
-                        != model.eval(variables[f"suffix_value_{step}"]),
-                    )
+            solver.add(
+                Or(
+                    variables[f"e1_{sim_result}"]
+                    != model.eval(variables[f"e1_{sim_result}"]),
+                    variables[f"e{1 if sim_result == 12 else 2}_{sim_result}"]
+                    != model.eval(
+                        variables[f"e{1 if sim_result == 12 else 2}_{sim_result}"]
+                    ),
+                    variables[f"suffix_value_{sim_result}"]
+                    != model.eval(variables[f"suffix_value_{sim_result}"]),
                 )
+            )
     else:
         print("No further solutions exist that satisfy the constraints.")
         break
+#endregion
