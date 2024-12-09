@@ -1,4 +1,4 @@
-#region imports and setup
+# region imports and setup
 import random
 from calculator import Calculator
 from maze import Maze
@@ -21,9 +21,9 @@ reverse_map = {i: elem for elem, i in element_map.items()}
 solver = Solver()
 variables = {}
 constraints = []
-#endregion
+# endregion
 
-#region "Manual" simulation. Only for testing functionality of the simulation
+# region "Manual" simulation. Only for testing functionality of the simulation
 """ pillars = {
     "L1": RockPaperScissors(),
     "L2": TicTacToe(),
@@ -49,7 +49,8 @@ print(
     + str(input)
 )
 activePillar.receive(inputPillar.input(input)) """
-#endregion
+# endregion
+
 
 def simulate(s):
     pillars = {
@@ -87,7 +88,8 @@ def simulate(s):
 
     return -1
 
-#region Base formula gen
+
+# region Base formula gen
 for i in range(13):
     # Define two distinct elements for each pair
     param = 2
@@ -212,9 +214,9 @@ for i in range(13):
             ),
         ),
     )
-#endregion
+# endregion
 
-#region counter rule setup
+# region counter rule setup
 L1Counter_1 = Int("L1Counter_1")
 L1Counter_2 = Int("L1Counter_2")
 solver.add(
@@ -284,11 +286,55 @@ solver.add(
     )
 )
 solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
-#endregion
+# endregion
+
+# region ordering rule setup
+solver.add(
+    [
+        Implies(
+            variables[f"e1_{i}"] == element_map["L1"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e2_{j}"] == element_map["L1"],
+                            Not(
+                                Or(
+                                    [
+                                        variables[f"e1_{k}"] == element_map["L1"]
+                                        for k in range(i + 1, j)
+                                    ]
+                                )
+                            ),
+                        )
+                        for j in range(i + 1, 12)
+                    ]
+                ),
+                Sum(
+                    [
+                        If(
+                            Or(
+                                variables[f"e2_{j}"] == element_map["L1"],
+                                variables[f"e1_{j}"] == element_map["L1"],
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(i + 1, 12)
+                    ]
+                )
+                == 0,
+            ),
+        )
+        for i in range(12)
+    ]
+)
+# endregion
 
 solver.add(constraints)
 
-#region encode/decode helpers
+
+# region encode/decode helpers
 def encode(model):
     solution_string = ""
     for i in range(13):
@@ -337,9 +383,10 @@ def decode(solution_string, solver):
 
     return variables
 
-#endregion
 
-#region coherence check
+# endregion
+
+# region coherence check
 solver.push()
 decode(path, solver)
 # print(solver.assertions())
@@ -360,9 +407,9 @@ if solver.check() == sat:
 else:
     print(f"Invalid solution at coherence check")
 solver.pop()
-#endregion
+# endregion
 
-#region solver
+# region solver
 for attempts in range(MAX_TRIES):
     if solver.check() == sat:
         model = solver.model()
@@ -393,4 +440,4 @@ for attempts in range(MAX_TRIES):
     else:
         print("No further solutions exist that satisfy the constraints.")
         break
-#endregion
+# endregion
