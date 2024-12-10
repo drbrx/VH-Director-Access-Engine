@@ -288,6 +288,7 @@ solver.add(
 solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
 # endregion
 
+# region ordering rules
 # region L1 ordering rule setup
 solver.add(
     [
@@ -611,8 +612,10 @@ solver.add(
     )
 )
 # endregion
+# endregion
 
 solver.add(constraints)
+
 
 # region encode/decode helpers
 def encode(model):
@@ -682,6 +685,8 @@ if solver.check() == sat:
             "\nTested value:\n",
             path,
         )
+        #with open("validSolutions.txt", "a") as file:
+                #file.write(solution_string + "\n")
     else:
         print(f"Valid solution at coherence check. Simulation failed")
 else:
@@ -700,7 +705,8 @@ for attempts in range(MAX_TRIES):
         sim_result = simulate(solution_string)
         if sim_result == -1:
             print("Valid solution found:", solution_string)
-            break
+            with open("validSolutions.txt", "a") as file:
+                file.write(solution_string + "\n")
         else:
             print(
                 f"Invalid solution at attampt {attempts+1}/{MAX_TRIES}, adding constraint(s) to avoid it"
