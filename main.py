@@ -9,7 +9,7 @@ from z3 import *
 z3.set_option(
     max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000
 )
-MAX_TRIES = 10
+MAX_TRIES = 2
 
 path = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0111"
 # print(simulate(path))
@@ -222,12 +222,12 @@ L1Counter_2 = Int("L1Counter_2")
 solver.add(
     L1Counter_1
     == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),
-    L1Counter_1 >= 2,
-    L1Counter_1 <= 4,
+    L1Counter_1 >=3,
+    L1Counter_1 <=4,
     L1Counter_2
     == Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]),
-    L1Counter_2 >= 2,
-    L1Counter_2 <= 4,
+    L1Counter_2 >=2,
+    L1Counter_2 <=3,
     L1Counter_1 + L1Counter_2 == 6,
 )
 
@@ -288,7 +288,7 @@ solver.add(
 solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
 # endregion
 
-# region ordering rule setup
+# region L1 ordering rule setup
 solver.add(
     [
         Implies(
@@ -298,13 +298,90 @@ solver.add(
                     [
                         And(
                             variables[f"e2_{j}"] == element_map["L1"],
-                            Not(
-                                Or(
-                                    [
-                                        variables[f"e1_{k}"] == element_map["L1"]
-                                        for k in range(i + 1, j)
-                                    ]
-                                )
+                            And(
+                                [
+                                    variables[f"e1_{k}"] != element_map["L1"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 12)
+                    ]
+                ),
+                Or(
+                    [
+                        And(
+                            variables[f"e2_{j}"] == element_map["L1"],
+                            And(
+                                [
+                                    variables[f"e1_{k}"] != element_map["L1"]
+                                    for k in range(j, i)
+                                ]
+                            ),
+                        )
+                        for j in range(i)
+                    ]
+                ),
+            ),
+        )
+        for i in range(13)
+    ]
+)
+solver.add(
+    [
+        Implies(
+            variables[f"e2_{i}"] == element_map["L1"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["L1"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["L1"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                ),
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["L1"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["L1"]
+                                    for k in range(j, i)
+                                ]
+                            ),
+                        )
+                        for j in range(i)
+                    ]
+                ),
+            ),
+        )
+        for i in range(12)
+    ]
+)
+# endregion
+
+# region L2 ordering rule setup
+solver.add(
+    [
+        Implies(
+            variables[f"e1_{i}"] == element_map["L2"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e2_{j}"] == element_map["L2"],
+                            And(
+                                [
+                                    variables[f"e1_{k}"] != element_map["L2"]
+                                    for k in range(i + 1, j)
+                                ]
                             ),
                         )
                         for j in range(i + 1, 12)
@@ -314,13 +391,53 @@ solver.add(
                     [
                         If(
                             Or(
-                                variables[f"e2_{j}"] == element_map["L1"],
-                                variables[f"e1_{j}"] == element_map["L1"],
+                                variables[f"e{1 if j == 12 else 2}_{j}"]
+                                == element_map["L2"],
+                                variables[f"e1_{j}"] == element_map["L2"],
                             ),
                             1,
                             0,
                         )
-                        for j in range(i + 1, 12)
+                        for j in range(i + 1, 13)
+                    ]
+                )
+                == 0,
+            ),
+        )
+        for i in range(13)
+    ]
+)
+solver.add(
+    [
+        Implies(
+            variables[f"e2_{i}"] == element_map["L2"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["L2"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["L2"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                ),
+                Sum(
+                    [
+                        If(
+                            Or(
+                                variables[f"e{1 if j == 12 else 2}_{j}"]
+                                == element_map["L2"],
+                                variables[f"e1_{j}"] == element_map["L2"],
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(i + 1, 13)
                     ]
                 )
                 == 0,
@@ -329,10 +446,30 @@ solver.add(
         for i in range(12)
     ]
 )
+solver.add(
+    And(
+        [
+            Implies(
+                variables[f"e1_{i}"] == element_map["L2"],
+                Sum(
+                    [
+                        If(
+                            variables[f"e2_{j}"] == element_map["L2"],
+                            1,
+                            0,
+                        )
+                        for j in range(i)
+                    ]
+                )
+                > 0,
+            )
+            for i in range(13)
+        ]
+    )
+)
 # endregion
 
 solver.add(constraints)
-
 
 # region encode/decode helpers
 def encode(model):
