@@ -9,7 +9,7 @@ from z3 import *
 z3.set_option(
     max_args=10000000, max_lines=1000000, max_depth=10000000, max_visited=1000000
 )
-MAX_TRIES = 2
+MAX_TRIES = 1000000
 
 path = "R2L2+1000/R1R2+41114/L1R1+0011/L2L1-1/R1L2+0100/L1R1+0010/R1L1-3/R2L1-3/L2R2+114/R2L2+0101/L2R2+12114/L1L2+0010/R1+0111"
 # print(simulate(path))
@@ -219,78 +219,98 @@ for i in range(13):
 # region counter rule setup
 L1Counter_1 = Int("L1Counter_1")
 L1Counter_2 = Int("L1Counter_2")
-solver.add(
-    L1Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),
-    L1Counter_1 >= 3,
-    L1Counter_1 <= 4,
-    L1Counter_2
-    == Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]),
-    L1Counter_2 >= 2,
-    L1Counter_2 <= 3,
-    L1Counter_1 + L1Counter_2 == 6,
+constraints.extend(
+    [
+        L1Counter_1
+        == Sum(
+            [If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]
+        ),
+        L1Counter_1 >= 3,
+        L1Counter_1 <= 4,
+        L1Counter_2
+        == Sum(
+            [If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]
+        ),
+        L1Counter_2 >= 2,
+        L1Counter_2 <= 3,
+        L1Counter_1 + L1Counter_2 == 6,
+    ]
 )
 
 R1Counter_1 = Int("R1Counter_1")
 R1Counter_2 = Int("R1Counter_2")
-solver.add(
-    R1Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]),
-    R1Counter_1 >= 3,
-    R1Counter_1 <= 4,
-    R1Counter_2
-    == Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]),
-    R1Counter_2 >= 2,
-    R1Counter_2 <= 3,
-    R1Counter_1 + R1Counter_2 == 6,
+constraints.extend(
+    [
+        R1Counter_1
+        == Sum(
+            [If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]
+        ),
+        R1Counter_1 >= 3,
+        R1Counter_1 <= 4,
+        R1Counter_2
+        == Sum(
+            [If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]
+        ),
+        R1Counter_2 >= 2,
+        R1Counter_2 <= 3,
+        R1Counter_1 + R1Counter_2 == 6,
+    ]
 )
 
 R2Counter_1 = Int("R2Counter_1")
 R2Counter_2 = Int("R2Counter_2")
-solver.add(
-    R2Counter_1
-    == Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]),
-    R2Counter_1 >= 3,
-    R2Counter_1 <= 4,
-    R2Counter_2
-    == Sum([If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]),
-    R2Counter_2 >= 2,
-    R2Counter_2 <= 3,
-    R2Counter_1 + R2Counter_2 == 6,
+constraints.extend(
+    [
+        R2Counter_1
+        == Sum(
+            [If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]
+        ),
+        R2Counter_1 >= 3,
+        R2Counter_1 <= 4,
+        R2Counter_2
+        == Sum(
+            [If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]
+        ),
+        R2Counter_2 >= 2,
+        R2Counter_2 <= 3,
+        R2Counter_1 + R2Counter_2 == 6,
+    ]
 )
 
 L2Counter = Int("L2Counter")
-solver.add(
-    L2Counter
-    == Sum(
-        Sum(
-            [
-                If(
-                    Or(
-                        variables[f"e2_{i}"] == element_map["L2"],
-                        variables[f"e1_{i}"] == element_map["L2"],
-                    ),
-                    1,
-                    0,
-                )
-                for i in range(12)
-            ]
-        ),
-        If(
-            Or(
-                variables[f"e1_{12}"] == element_map["L2"],
+constraints.extend(
+    [
+        L2Counter
+        == Sum(
+            Sum(
+                [
+                    If(
+                        Or(
+                            variables[f"e2_{i}"] == element_map["L2"],
+                            variables[f"e1_{i}"] == element_map["L2"],
+                        ),
+                        1,
+                        0,
+                    )
+                    for i in range(12)
+                ]
             ),
-            1,
-            0,
-        ),
-    )
+            If(
+                Or(
+                    variables[f"e1_{12}"] == element_map["L2"],
+                ),
+                1,
+                0,
+            ),
+        )
+    ]
 )
-solver.add(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
+constraints.append(And(L2Counter <= 8, L2Counter >= 5, L2Counter % 2 == 1))
 # endregion
 
 # region ordering rules
 # region L1 ordering rule setup
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e1_{i}"] == element_map["L1"],
@@ -328,7 +348,7 @@ solver.add(
         for i in range(13)
     ]
 )
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e2_{i}"] == element_map["L1"],
@@ -369,7 +389,7 @@ solver.add(
 # endregion
 
 # region L2 ordering rule setup
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e1_{i}"] == element_map["L2"],
@@ -408,7 +428,7 @@ solver.add(
         for i in range(13)
     ]
 )
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e2_{i}"] == element_map["L2"],
@@ -447,7 +467,7 @@ solver.add(
         for i in range(12)
     ]
 )
-solver.add(
+constraints.append(
     And(
         [
             Implies(
@@ -471,7 +491,7 @@ solver.add(
 # endregion
 
 # region R1 ordering rule setup
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e2_{i}"] == element_map["R1"],
@@ -512,7 +532,7 @@ solver.add(
 # endregion
 
 # region R2 ordering rule setup
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e1_{i}"] == element_map["R2"],
@@ -551,7 +571,7 @@ solver.add(
         for i in range(13)
     ]
 )
-solver.add(
+constraints.extend(
     [
         Implies(
             variables[f"e2_{i}"] == element_map["R2"],
@@ -590,7 +610,7 @@ solver.add(
         for i in range(12)
     ]
 )
-solver.add(
+constraints.append(
     And(
         [
             Implies(
@@ -614,7 +634,10 @@ solver.add(
 # endregion
 # endregion
 
-solver.add(constraints)
+base_rules = And([c for c in constraints])
+base_rules = simplify(base_rules)
+solver.add(base_rules)
+solver.push()
 
 
 # region encode/decode helpers
@@ -685,8 +708,8 @@ if solver.check() == sat:
             "\nTested value:\n",
             path,
         )
-        #with open("validSolutions.txt", "a") as file:
-                #file.write(solution_string + "\n")
+        # with open("validSolutions.txt", "a") as file:
+        # file.write(solution_string + "\n")
     else:
         print(f"Valid solution at coherence check. Simulation failed")
 else:
@@ -695,6 +718,7 @@ solver.pop()
 # endregion
 
 # region solver
+fail_constraints = True
 for attempts in range(MAX_TRIES):
     if solver.check() == sat:
         model = solver.model()
@@ -711,18 +735,23 @@ for attempts in range(MAX_TRIES):
             print(
                 f"Invalid solution at attampt {attempts+1}/{MAX_TRIES}, adding constraint(s) to avoid it"
             )
-            solver.add(
-                Or(
-                    variables[f"e1_{sim_result}"]
-                    != model.eval(variables[f"e1_{sim_result}"]),
+            new_rule = Or(
+                variables[f"e1_{sim_result}"]
+                != model.eval(variables[f"e1_{sim_result}"]),
+                variables[f"e{1 if sim_result == 12 else 2}_{sim_result}"]
+                != model.eval(
                     variables[f"e{1 if sim_result == 12 else 2}_{sim_result}"]
-                    != model.eval(
-                        variables[f"e{1 if sim_result == 12 else 2}_{sim_result}"]
-                    ),
-                    variables[f"suffix_value_{sim_result}"]
-                    != model.eval(variables[f"suffix_value_{sim_result}"]),
-                )
+                ),
+                variables[f"suffix_value_{sim_result}"]
+                != model.eval(variables[f"suffix_value_{sim_result}"]),
             )
+            solver.add(new_rule)
+            fail_constraints = And(fail_constraints, new_rule)
+            if attempts % 20 == 0:
+                solver.pop()
+                solver.push()
+                fail_constraints = simplify(fail_constraints)
+                solver.add(fail_constraints)
     else:
         print("No further solutions exist that satisfy the constraints.")
         break
