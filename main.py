@@ -222,12 +222,12 @@ L1Counter_2 = Int("L1Counter_2")
 solver.add(
     L1Counter_1
     == Sum([If(variables[f"e1_{i}"] == element_map["L1"], 1, 0) for i in range(13)]),
-    L1Counter_1 >=3,
-    L1Counter_1 <=4,
+    L1Counter_1 >= 3,
+    L1Counter_1 <= 4,
     L1Counter_2
     == Sum([If(variables[f"e2_{i}"] == element_map["L1"], 1, 0) for i in range(12)]),
-    L1Counter_2 >=2,
-    L1Counter_2 <=3,
+    L1Counter_2 >= 2,
+    L1Counter_2 <= 3,
     L1Counter_1 + L1Counter_2 == 6,
 )
 
@@ -236,12 +236,12 @@ R1Counter_2 = Int("R1Counter_2")
 solver.add(
     R1Counter_1
     == Sum([If(variables[f"e1_{i}"] == element_map["R1"], 1, 0) for i in range(13)]),
-    R1Counter_1 >= 2,
+    R1Counter_1 >= 3,
     R1Counter_1 <= 4,
     R1Counter_2
     == Sum([If(variables[f"e2_{i}"] == element_map["R1"], 1, 0) for i in range(12)]),
     R1Counter_2 >= 2,
-    R1Counter_2 <= 4,
+    R1Counter_2 <= 3,
     R1Counter_1 + R1Counter_2 == 6,
 )
 
@@ -250,12 +250,12 @@ R2Counter_2 = Int("R2Counter_2")
 solver.add(
     R2Counter_1
     == Sum([If(variables[f"e1_{i}"] == element_map["R2"], 1, 0) for i in range(13)]),
-    R2Counter_1 >= 2,
+    R2Counter_1 >= 3,
     R2Counter_1 <= 4,
     R2Counter_2
     == Sum([If(variables[f"e2_{i}"] == element_map["R2"], 1, 0) for i in range(12)]),
     R2Counter_2 >= 2,
-    R2Counter_2 <= 4,
+    R2Counter_2 <= 3,
     R2Counter_1 + R2Counter_2 == 6,
 )
 
@@ -464,6 +464,149 @@ solver.add(
                 > 0,
             )
             for i in range(13)
+        ]
+    )
+)
+# endregion
+
+# region R1 ordering rule setup
+solver.add(
+    [
+        Implies(
+            variables[f"e2_{i}"] == element_map["R1"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["R1"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["R1"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                ),
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["R1"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["R1"]
+                                    for k in range(j, i)
+                                ]
+                            ),
+                        )
+                        for j in range(i)
+                    ]
+                ),
+            ),
+        )
+        for i in range(12)
+    ]
+)
+# endregion
+
+# region R2 ordering rule setup
+solver.add(
+    [
+        Implies(
+            variables[f"e1_{i}"] == element_map["R2"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e2_{j}"] == element_map["R2"],
+                            And(
+                                [
+                                    variables[f"e1_{k}"] != element_map["R2"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 12)
+                    ]
+                ),
+                Sum(
+                    [
+                        If(
+                            Or(
+                                variables[f"e{1 if j == 12 else 2}_{j}"]
+                                == element_map["R2"],
+                                variables[f"e1_{j}"] == element_map["R2"],
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                )
+                == 0,
+            ),
+        )
+        for i in range(13)
+    ]
+)
+solver.add(
+    [
+        Implies(
+            variables[f"e2_{i}"] == element_map["R2"],
+            Or(
+                Or(
+                    [
+                        And(
+                            variables[f"e1_{j}"] == element_map["R2"],
+                            And(
+                                [
+                                    variables[f"e2_{k}"] != element_map["R2"]
+                                    for k in range(i + 1, j)
+                                ]
+                            ),
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                ),
+                Sum(
+                    [
+                        If(
+                            Or(
+                                variables[f"e{1 if j == 12 else 2}_{j}"]
+                                == element_map["R2"],
+                                variables[f"e1_{j}"] == element_map["R2"],
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(i + 1, 13)
+                    ]
+                )
+                == 0,
+            ),
+        )
+        for i in range(12)
+    ]
+)
+solver.add(
+    And(
+        [
+            Implies(
+                variables[f"e2_{i}"] == element_map["R2"],
+                Sum(
+                    [
+                        If(
+                            variables[f"e1_{j}"] == element_map["R2"],
+                            1,
+                            0,
+                        )
+                        for j in range(i)
+                    ]
+                )
+                > 0,
+            )
+            for i in range(12)
         ]
     )
 )
